@@ -29,7 +29,7 @@ async function cargarSalas() {
         console.error('Error:', error);
         contenedor.innerHTML = `
             <p style="color: red;">
-                ❌ Error al conectar con el backend.<br>
+                Error al conectar con el backend.<br>
                 Asegurate que el backend esté corriendo en http://localhost:5000
             </p>
         `;
@@ -59,9 +59,9 @@ function mostrarTabla(salas) {
     salas.forEach(sala => {
         // Traducir el tipo de sala
         let tipoTexto = sala.tipo_sala;
-        if (sala.tipo_sala === 'libre') tipoTexto = '🟢 Uso Libre';
-        if (sala.tipo_sala === 'posgrado') tipoTexto = '🔵 Posgrado';
-        if (sala.tipo_sala === 'docente') tipoTexto = '🟡 Docente';
+        if (sala.tipo_sala === 'libre') tipoTexto = 'Uso Libre';
+        if (sala.tipo_sala === 'posgrado') tipoTexto = ' Posgrado';
+        if (sala.tipo_sala === 'docente') tipoTexto = 'Docente';
         
         html += `
             <tr>
