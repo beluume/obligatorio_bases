@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sistema de Reservas UCU</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <h1>🎓 Sistema de Reservas</h1>
+        <p class="login-subtitle">Universidad Católica del Uruguay</p>
+        
+        <div class="login-tabs">
+            <button class="login-tab active" data-tab="login">Iniciar Sesión</button>
+            <!--<button class="login-tab" data-tab="register">Registrarse</button>-->
+        </div>
+        
+        <div id="alert" class="login-alert"></div>
+        
+        <!-- Formulario de Login -->
+        <div id="login-form" class="login-form-container active">
+            <form id="form-login">
+                <div class="login-form-group">
+                    <label for="login-email">Correo Electrónico</label>
+                    <input type="email" id="login-email" required 
+                           placeholder="usuario@ucu.edu.uy">
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="login-password">Contraseña</label>
+                    <input type="password" id="login-password" required 
+                           placeholder="••••••••">
+                </div>
+                
+                <button type="submit" class="login-btn">Iniciar Sesión</button>
+            </form>
+        </div>
+        
+        <!-- Formulario de Registro -->
+        <div id="register-form" class="login-form-container">
+            <form id="form-register">
+                <div class="login-form-group">
+                    <label for="register-ci">Cédula de Identidad</label>
+                    <input type="text" id="register-ci" required 
+                           placeholder="12345678"
+                           pattern="[0-9]{7,8}">
+                    <div class="login-helper-text">Solo números, sin puntos ni guiones</div>
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="register-nombre">Nombre</label>
+                    <input type="text" id="register-nombre" required 
+                           placeholder="Juan">
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="register-apellido">Apellido</label>
+                    <input type="text" id="register-apellido" required 
+                           placeholder="Pérez">
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="register-email">Correo Electrónico</label>
+                    <input type="email" id="register-email" required 
+                           placeholder="usuario@ucu.edu.uy">
+                </div>
+                
+                <div class="login-form-group">
+                    <label for="register-password">Contraseña</label>
+                    <input type="password" id="register-password" required 
+                           placeholder="••••••••"
+                           minlength="6">
+                    <div class="login-helper-text">Mínimo 6 caracteres</div>
+                </div>
+                
+                <button type="submit" class="login-btn">Registrarse</button>
+            </form>
+        </div>
+    </div>
+    
+    <script src="login.js"></script>
+</body>
+</html>
