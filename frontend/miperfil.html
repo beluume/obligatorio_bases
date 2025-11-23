@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Perfil - Sistema UCU</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>🏛️ Sistema de Reserva de Salas</h1>
+        <nav>
+            <ul>
+                <li><a href="index.html">Inicio</a></li>
+                <li><a href="reservas.html">Reservas</a></li>
+                <li><a href="miperfil.html" class="activo">Mi Perfil</a></li>
+                <li><a href="reportes.html">Reportes</a></li>
+                <li><a href="#" id="btnCerrarSesion">Cerrar Sesión</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="contenedor">
+            <h2>👤 Mi Perfil</h2>
+            
+            <div style="background: rgba(28, 27, 77, 0.6); padding: 25px; border-radius: 12px; border: 1px solid rgba(232, 14, 101, 0.3); margin-bottom: 30px;">
+                <h3 style="color: var(--color-magenta); margin-bottom: 15px;">📋 Información Personal</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    <div>
+                        <p style="color: var(--color-text-secondary); font-size: 0.9rem;">Email:</p>
+                        <p style="color: var(--color-text); font-weight: 600;" id="perfilEmail">-</p>
+                    </div>
+                    <div>
+                        <p style="color: var(--color-text-secondary); font-size: 0.9rem;">CI:</p>
+                        <p style="color: var(--color-text); font-weight: 600;" id="perfilCI">-</p>
+                    </div>
+                    <div>
+                        <p style="color: var(--color-text-secondary); font-size: 0.9rem;">Rol:</p>
+                        <p style="color: var(--color-text); font-weight: 600;" id="perfilRol">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <h3 style="color: var(--color-cyan); margin-bottom: 20px;">📅 Mis Reservas</h3>
+
+            <div class="stats-container" style="margin-bottom: 30px;">
+                <div class="stat-card">
+                    <div class="number" id="statEnUso">0</div>
+                    <div class="label">En Uso Ahora</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="statActivas">0</div>
+                    <div class="label">Activas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="statCanceladas">0</div>
+                    <div class="label">Canceladas</div>
+                </div>
+                <div class="stat-card">
+                    <div class="number" id="statFinalizadas">0</div>
+                    <div class="label">Finalizadas</div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 20px;">
+                <div style="display: flex; gap: 10px; border-bottom: 2px solid rgba(232, 14, 101, 0.3); padding-bottom: 10px; flex-wrap: wrap;">
+                    <button class="tab-btn activo" data-tab="en-uso">
+                        ⏰ En Uso Ahora (<span id="count-en-uso">0</span>)
+                    </button>
+                    <button class="tab-btn" data-tab="activas">
+                        ✅ Activas (<span id="count-activas">0</span>)
+                    </button>
+                    <button class="tab-btn" data-tab="canceladas">
+                        ❌ Canceladas (<span id="count-canceladas">0</span>)
+                    </button>
+                    <button class="tab-btn" data-tab="finalizadas">
+                        ✓ Finalizadas (<span id="count-finalizadas">0</span>)
+                    </button>
+                </div>
+            </div>
+
+            <div id="tab-en-uso" class="tab-content"></div>
+            <div id="tab-activas" class="tab-content" style="display: none;"></div>
+            <div id="tab-canceladas" class="tab-content" style="display: none;"></div>
+            <div id="tab-finalizadas" class="tab-content" style="display: none;"></div>
+
+        </section>
+    </main>
+
+    <footer>
+        <p>💻 Desarrollado por Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+        <p style="margin-top: 5px; font-size: 0.85rem; opacity: 0.7;">Universidad Católica del Uruguay</p>
+    </footer>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        if (localStorage.getItem('usuarioLogueado') !== 'true') {
+            window.location.href = 'login.html';
+        }
+
+        const email = localStorage.getItem('usuarioEmail');
+        const ci = localStorage.getItem('usuarioCI');
+
+        if (email) {
+            document.getElementById('perfilEmail').textContent = email;
+        }
+
+        if (ci) {
+            document.getElementById('perfilCI').textContent = ci;
+        }
+
+        const rolUsuario = localStorage.getItem('usuarioTipo') || 'grado';
+        const rolTexto = rolUsuario === 'docente' ? '👨‍🏫 Docente' : 
+                         rolUsuario === 'posgrado' ? '🎓 Posgrado' : '📚 Estudiante';
+        document.getElementById('perfilRol').textContent = rolTexto;
+
+        function estaEnUsoAhora(reserva) {
+            const hoy = new Date();
+            
+            // Parsear la fecha DD/MM/YYYY
+            const [dia, mes, anio] = reserva.fecha.split('/');
+            const fechaReserva = new Date(anio, mes - 1, dia);
+            
+            // Verificar que sea hoy
+            if (fechaReserva.toDateString() !== hoy.toDateString()) {
+                return false;
+            }
+            
+            // Parsear el horario HH:MM-HH:MM
+            const [horaInicio, horaFin] = [reserva.hora_inicio, reserva.hora_fin];
+            const [horaInicioH, horaInicioM] = horaInicio.split(':').map(Number);
+            const [horaFinH, horaFinM] = horaFin.split(':').map(Number);
+            
+            const inicio = new Date();
+            inicio.setHours(horaInicioH, horaInicioM, 0, 0);
+            
+            const fin = new Date();
+            fin.setHours(horaFinH, horaFinM, 0, 0);
+            
+            return hoy >= inicio && hoy <= fin;
+        }
+
+        function esFutura(reserva) {
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            const [dia, mes, anio] = reserva.fecha.split('/');
+            const fechaReserva = new Date(anio, mes - 1, dia);
+            fechaReserva.setHours(0, 0, 0, 0);
+            
+            if (fechaReserva > hoy) return true;
+            
+            if (fechaReserva.toDateString() === hoy.toDateString()) {
+                const [horaInicio] = reserva.hora_inicio.split(':').map(Number);
+                return hoy.getHours() < horaInicio;
+            }
+            
+            return false;
+        }
+
+        async function cargarMisReservas() {
+            try {
+                console.log('🔄 Cargando reservas para CI:', ci);
+                
+                const response = await fetch(`${API_URL}/reservas?ci_participante=${ci}`);
+                const data = await response.json();
+                
+                console.log('📊 Reservas recibidas:', data);
+                
+                if (!data.success || !data.data) {
+                    console.error('Error cargando reservas:', data.error);
+                    mostrarMensajeVacio();
+                    return;
+                }
+                
+                const reservas = data.data;
+                
+                // Clasificar reservas
+                const enUso = reservas.filter(r => r.estado === 'activa' && estaEnUsoAhora(r));
+                const activas = reservas.filter(r => r.estado === 'activa' && esFutura(r));
+                const canceladas = reservas.filter(r => r.estado === 'cancelada');
+                const finalizadas = reservas.filter(r => r.estado === 'finalizada');
+                
+                // Actualizar estadísticas
+                document.getElementById('statEnUso').textContent = enUso.length;
+                document.getElementById('statActivas').textContent = activas.length;
+                document.getElementById('statCanceladas').textContent = canceladas.length;
+                document.getElementById('statFinalizadas').textContent = finalizadas.length;
+                
+                document.getElementById('count-en-uso').textContent = enUso.length;
+                document.getElementById('count-activas').textContent = activas.length;
+                document.getElementById('count-canceladas').textContent = canceladas.length;
+                document.getElementById('count-finalizadas').textContent = finalizadas.length;
+                
+                // Mostrar reservas por categoría
+                mostrarReservas('en-uso', enUso);
+                mostrarReservas('activas', activas);
+                mostrarReservas('canceladas', canceladas);
+                mostrarReservas('finalizadas', finalizadas);
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                mostrarMensajeError();
+            }
+        }
+
+        function mostrarMensajeVacio() {
+            ['en-uso', 'activas', 'canceladas', 'finalizadas'].forEach(tipo => {
+                const contenedor = document.getElementById(`tab-${tipo}`);
+                contenedor.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--color-text-secondary);">No hay reservas en esta categoría</p>';
+            });
+        }
+
+        function mostrarMensajeError() {
+            ['en-uso', 'activas', 'canceladas', 'finalizadas'].forEach(tipo => {
+                const contenedor = document.getElementById(`tab-${tipo}`);
+                contenedor.innerHTML = '<div class="mensaje-error"><h3>❌ Error</h3><p>No se pudieron cargar las reservas. Verifica que el backend esté corriendo.</p></div>';
+            });
+        }
+
+        function mostrarReservas(tipo, reservas) {
+            const contenedor = document.getElementById(`tab-${tipo}`);
+            
+            if (reservas.length === 0) {
+                const mensajes = {
+                    'en-uso': '⏰ No tienes reservas en uso ahora.',
+                    'activas': '📅 No tienes reservas activas.',
+                    'canceladas': '❌ No tienes reservas canceladas.',
+                    'finalizadas': '✓ No tienes reservas finalizadas.'
+                };
+                contenedor.innerHTML = `
+                    <div style="text-align: center; padding: 40px; background: rgba(23, 145, 129, 0.1); border-radius: 12px;">
+                        <p style="font-size: 2.5rem; margin-bottom: 15px;">📭</p>
+                        <p style="color: var(--color-text-secondary);">${mensajes[tipo]}</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            reservas.forEach(reserva => {
+                html += `
+                    <div style="background: rgba(28, 27, 77, 0.5); padding: 20px; border-radius: 12px; border: 1px solid var(--color-cyan); margin-bottom: 15px;">
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                            <div>
+                                <p style="color: var(--color-text-secondary); font-size: 0.85rem;">SALA</p>
+                                <p style="color: var(--color-text); font-weight: 600; font-size: 1.1rem;">${reserva.nombre_sala}</p>
+                                <p style="color: var(--color-text-secondary); font-size: 0.85rem;">${reserva.edificio}</p>
+                            </div>
+                            <div>
+                                <p style="color: var(--color-text-secondary); font-size: 0.85rem;">FECHA</p>
+                                <p style="color: var(--color-text); font-weight: 600;">${reserva.fecha}</p>
+                            </div>
+                            <div>
+                                <p style="color: var(--color-text-secondary); font-size: 0.85rem;">HORARIO</p>
+                                <p style="color: var(--color-text); font-weight: 600;">${reserva.hora_inicio} - ${reserva.hora_fin}</p>
+                            </div>
+                            <div>
+                                <p style="color: var(--color-text-secondary); font-size: 0.85rem;">ID RESERVA</p>
+                                <p style="color: var(--color-text); font-weight: 600;">#${reserva.id_reserva}</p>
+                            </div>
+                        </div>
+                        ${tipo === 'activas' || tipo === 'en-uso' ? `
+                        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                            <button onclick="cancelarReserva(${reserva.id_reserva}); return false;" style="background: rgba(232, 14, 101, 0.2); border: 1px solid var(--color-magenta); padding: 8px 20px; font-size: 0.9rem; cursor: pointer; border-radius: 6px; color: var(--color-text);">
+                                ❌ Cancelar Reserva
+                            </button>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            });
+            contenedor.innerHTML = html;
+        }
+
+        window.cancelarReserva = async function(id_reserva) {
+            if (!confirm('¿Está seguro que desea cancelar esta reserva?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/reservas/${id_reserva}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ estado: 'cancelada' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert('✅ Reserva cancelada exitosamente');
+                    cargarMisReservas(); // Recargar
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+            
+            return false;
+        };
+
+        document.querySelectorAll('.tab-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                const tabName = this.dataset.tab;
+                
+                document.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('activo');
+                    btn.style.color = 'var(--color-text-secondary)';
+                    btn.style.borderBottom = 'none';
+                });
+                
+                this.classList.add('activo');
+                this.style.color = 'var(--color-text)';
+                this.style.borderBottom = '2px solid var(--color-magenta)';
+                
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.style.display = 'none';
+                });
+                
+                document.getElementById(`tab-${tabName}`).style.display = 'block';
+            });
+        });
+
+        // Cargar reservas al inicio
+        cargarMisReservas();
+    </script>
+    <script src="js/logout.js"></script>
+    
+    <style>
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--color-text-secondary);
+            padding: 10px 20px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            font-size: 0.95rem;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn.activo {
+            color: var(--color-text);
+            border-bottom: 2px solid var(--color-magenta);
+        }
+        
+        .tab-btn:hover {
+            color: var(--color-text);
+        }
+    </style>
+</body>
+</html>

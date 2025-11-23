@@ -1,0 +1,26 @@
+New-Item -ItemType File -Path .gitignore -Force
+```
+
+### **2. Abrir `.gitignore` y pegar SOLO esto:**
+```
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# MySQL Data (Docker) - archivos binarios de la BD
+backend/mysql_data/
+*.sock
+
+# Backups
+*.backup
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

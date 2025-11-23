@@ -3,36 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Sistema UCU</title>
+    <title>Iniciar Sesión - Sistema UCU</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
     <header>
-        <h1>Sistema de Reserva de Salas</h1>
+        <h1>🏛️ Sistema de Reserva de Salas</h1>
     </header>
 
     <main>
-        <section class="contenedor">
-            <h2>Inicio de Sesión</h2>
-            <p>Ingrese sus credenciales:</p>
-            <form>
-                <div style="margin: 10px 0;">
-                    <label>Email:</label><br>
-                    <input type="email" style="width: 100%; padding: 8px; margin-top: 5px;">
+        <section class="contenedor" style="max-width: 500px;">
+            <h2>🔐 Inicio de Sesión</h2>
+            <p>Ingrese sus credenciales para acceder al sistema:</p>
+            
+            <div style="background: rgba(23, 145, 129, 0.1); padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid var(--color-cyan);">
+                <h3 style="color: var(--color-cyan); margin-bottom: 10px; font-size: 1rem;">📧 Dominios por Rol:</h3>
+                <ul style="margin: 0; padding-left: 20px; color: var(--color-text-secondary); font-size: 0.9rem;">
+                    <li><strong>@correo.ucu.edu.uy</strong> - Estudiante de Grado</li>
+                    <li><strong>@postgrado.ucu.edu.uy</strong> - Estudiante de Posgrado</li>
+                    <li><strong>@docentes.ucu.edu.uy</strong> - Docente</li>
+                </ul>
+            </div>
+            
+            <form id="loginForm">
+                <div>
+                    <label>📧 Email:</label>
+                    <input type="email" id="email" placeholder="usuario@correo.ucu.edu.uy" required>
                 </div>
-                <div style="margin: 10px 0;">
-                    <label>Contraseña:</label><br>
-                    <input type="password" style="width: 100%; padding: 8px; margin-top: 5px;">
+                
+                <div>
+                    <label>🔑 Contraseña:</label>
+                    <input type="password" id="password" placeholder="••••••••" required>
                 </div>
-                <button type="button" style="background: #00bcd4; color: white; padding: 10px 20px; border: none; cursor: pointer; margin-top: 10px;">
-                    Ingresar
+                
+                <div id="error-message" style="display: none; margin: 15px 0; padding: 12px; background: rgba(232, 14, 101, 0.2); border: 1px solid var(--color-magenta); border-radius: 8px; color: var(--color-magenta);">
+                </div>
+                
+                <button type="submit" style="width: 100%; margin-top: 10px;">
+                    Ingresar al Sistema
                 </button>
             </form>
+            
+            <div style="margin-top: 20px; padding: 15px; background: rgba(28, 27, 77, 0.6); border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                <p style="margin: 0 0 10px 0; font-weight: 600; color: var(--color-cyan);">👤 Usuarios de prueba:</p>
+                <ul style="margin: 0; padding-left: 20px; color: var(--color-text-secondary); font-size: 0.85rem;">
+                    <li>ana.garcia@correo.ucu.edu.uy</li>
+                    <li>luis.perez@docentes.ucu.edu.uy</li>
+                    <li>sofia.rodriguez@postgrado.ucu.edu.uy</li>
+                </ul>
+                <p style="margin: 10px 0 0 0; font-size: 0.8rem; color: var(--color-text-secondary);">Contraseña: cualquiera</p>
+            </div>
         </section>
     </main>
 
     <footer>
-        <p>Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+        <p>💻 Desarrollado por Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+        <p style="margin-top: 5px; font-size: 0.85rem; opacity: 0.7;">Universidad Católica del Uruguay</p>
     </footer>
+    
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        // Verificar si ya está logueado
+        if (localStorage.getItem('usuarioLogueado') === 'true') {
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('error-message');
+            
+            try {
+                const response = await fetch(`${API_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Guardar estado de login
+                    localStorage.setItem('usuarioLogueado', 'true');
+                    localStorage.setItem('usuarioEmail', data.user.email);
+                    localStorage.setItem('usuarioCI', data.user.ci);
+                    localStorage.setItem('usuarioNombre', data.user.nombre);
+                    localStorage.setItem('usuarioApellido', data.user.apellido);
+                    localStorage.setItem('usuarioRol', data.user.rol);
+                    localStorage.setItem('usuarioTipo', data.user.tipo_usuario);
+                    
+                    // Mensaje de éxito
+                    errorDiv.style.display = 'block';
+                    errorDiv.style.background = 'rgba(23, 145, 129, 0.2)';
+                    errorDiv.style.borderColor = 'var(--color-cyan)';
+                    errorDiv.style.color = 'var(--color-cyan)';
+                    errorDiv.textContent = '✅ Login exitoso. Redirigiendo...';
+                    
+                    // Redirigir después de 1 segundo
+                    setTimeout(() => {
+                        window.location.href = 'index.html';
+                    }, 1000);
+                } else {
+                    // Mostrar error
+                    errorDiv.style.display = 'block';
+                    errorDiv.style.background = 'rgba(232, 14, 101, 0.2)';
+                    errorDiv.style.borderColor = 'var(--color-magenta)';
+                    errorDiv.style.color = 'var(--color-magenta)';
+                    errorDiv.textContent = '❌ ' + data.error;
+                }
+            } catch (error) {
+                errorDiv.style.display = 'block';
+                errorDiv.style.background = 'rgba(232, 14, 101, 0.2)';
+                errorDiv.style.borderColor = 'var(--color-magenta)';
+                errorDiv.style.color = 'var(--color-magenta)';
+                errorDiv.textContent = '❌ Error de conexión. Verifica que el backend esté corriendo.';
+            }
+        });
+    </script>
 </body>
 </html>

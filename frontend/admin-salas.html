@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Salas - Sistema UCU</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>🏛️ Sistema de Reserva de Salas</h1>
+        <nav>
+            <ul>
+                <li><a href="index.html">Inicio</a></li>
+                <li><a href="reservas.html">Reservas</a></li>
+                <li><a href="miperfil.html">Mi Perfil</a></li>
+                <li><a href="reportes.html">Reportes</a></li>
+                <li><a href="admin-salas.html" class="activo">Administración</a></li>
+                <li><a href="#" id="btnCerrarSesion">Cerrar Sesión</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="contenedor">
+            <h2>🏢 Gestión de Salas</h2>
+            <p>Administrar salas del sistema</p>
+
+            <div style="margin: 20px 0;">
+                <button onclick="mostrarFormulario()" style="background: var(--color-cyan);">➕ Nueva Sala</button>
+                <button onclick="cargarSalas()" style="background: rgba(232, 14, 101, 0.2); border: 1px solid var(--color-magenta);">🔄 Recargar Lista</button>
+            </div>
+
+            <!-- Formulario Crear/Editar -->
+            <div id="formulario" style="display: none; background: rgba(28, 27, 77, 0.6); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--color-cyan);">
+                <h3 id="tituloForm" style="color: var(--color-cyan);">Nueva Sala</h3>
+                <form id="formSala">
+                    <input type="hidden" id="nombreOriginal">
+                    <input type="hidden" id="edificioOriginal">
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Nombre de la Sala:</label>
+                        <input type="text" id="nombre_sala" placeholder="Sala A1" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Edificio:</label>
+                        <select id="edificio" required>
+                            <option value="">Seleccione edificio...</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Capacidad:</label>
+                        <input type="number" id="capacidad" placeholder="10" min="1" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Tipo de Sala:</label>
+                        <select id="tipo_sala" required>
+                            <option value="">Seleccione tipo...</option>
+                            <option value="libre">🟢 Uso Libre</option>
+                            <option value="posgrado">🔵 Posgrado</option>
+                            <option value="docente">🟡 Docente</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" style="flex: 1;">💾 Guardar</button>
+                        <button type="button" onclick="ocultarFormulario()" style="flex: 1; background: rgba(232, 14, 101, 0.2); border: 1px solid var(--color-magenta);">❌ Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Lista de Salas -->
+            <div id="lista-salas"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>💻 Desarrollado por Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+    </footer>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        if (localStorage.getItem('usuarioLogueado') !== 'true') {
+            window.location.href = 'login.html';
+        }
+
+        let modoEdicion = false;
+
+        async function cargarEdificios() {
+            try {
+                const response = await fetch(`${API_URL}/edificios`);
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    const select = document.getElementById('edificio');
+                    data.data.forEach(e => {
+                        const option = document.createElement('option');
+                        option.value = e.nombre_edificio;
+                        option.textContent = e.nombre_edificio;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando edificios:', error);
+            }
+        }
+
+        async function cargarSalas() {
+            const contenedor = document.getElementById('lista-salas');
+            contenedor.innerHTML = '<p class="mensaje-carga">⏳ Cargando salas...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/salas`);
+                const data = await response.json();
+
+                if (data.success && data.data && data.data.length > 0) {
+                    let html = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Edificio</th>
+                                    <th>Capacidad</th>
+                                    <th>Tipo</th>
+                                    <th>Dirección</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    data.data.forEach(s => {
+                        let tipoBadge = '';
+                        if (s.tipo_sala === 'libre') tipoBadge = '<span class="badge badge-activa">🟢 Libre</span>';
+                        else if (s.tipo_sala === 'posgrado') tipoBadge = '<span class="badge" style="background: rgba(23, 145, 129, 0.2); color: var(--color-cyan); border: 1px solid var(--color-cyan);">🔵 Posgrado</span>';
+                        else if (s.tipo_sala === 'docente') tipoBadge = '<span class="badge badge-cancelada">🟡 Docente</span>';
+
+                        html += `
+                            <tr>
+                                <td><strong>${s.nombre_sala}</strong></td>
+                                <td>${s.edificio}</td>
+                                <td style="text-align: center;"><strong>${s.capacidad}</strong></td>
+                                <td>${tipoBadge}</td>
+                                <td>${s.direccion}</td>
+                                <td>
+                                    <button onclick='editarSala("${s.nombre_sala}", "${s.edificio}")' style="padding: 5px 10px; font-size: 0.85rem; background: var(--color-cyan); margin-right: 5px;">✏️ Editar</button>
+                                    <button onclick='eliminarSala("${s.nombre_sala}", "${s.edificio}")' style="padding: 5px 10px; font-size: 0.85rem; background: rgba(232, 14, 101, 0.6);">🗑️ Eliminar</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table>';
+                    contenedor.innerHTML = html;
+                } else {
+                    contenedor.innerHTML = '<p style="text-align: center; padding: 40px;">No hay salas registradas</p>';
+                }
+            } catch (error) {
+                contenedor.innerHTML = '<div class="mensaje-error"><h3>❌ Error</h3><p>' + error.message + '</p></div>';
+            }
+        }
+
+        function mostrarFormulario() {
+            document.getElementById('formulario').style.display = 'block';
+            document.getElementById('tituloForm').textContent = 'Nueva Sala';
+            document.getElementById('formSala').reset();
+            document.getElementById('nombre_sala').readOnly = false;
+            document.getElementById('edificio').disabled = false;
+            modoEdicion = false;
+        }
+
+        function ocultarFormulario() {
+            document.getElementById('formulario').style.display = 'none';
+            document.getElementById('formSala').reset();
+        }
+
+        async function editarSala(nombre, edificio) {
+            try {
+                const response = await fetch(`${API_URL}/salas`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const sala = data.data.find(s => s.nombre_sala === nombre && s.edificio === edificio);
+                    
+                    if (sala) {
+                        document.getElementById('formulario').style.display = 'block';
+                        document.getElementById('tituloForm').textContent = 'Editar Sala';
+                        document.getElementById('nombre_sala').value = sala.nombre_sala;
+                        document.getElementById('edificio').value = sala.edificio;
+                        document.getElementById('capacidad').value = sala.capacidad;
+                        document.getElementById('tipo_sala').value = sala.tipo_sala;
+                        document.getElementById('nombreOriginal').value = sala.nombre_sala;
+                        document.getElementById('edificioOriginal').value = sala.edificio;
+                        document.getElementById('nombre_sala').readOnly = true;
+                        document.getElementById('edificio').disabled = true;
+                        modoEdicion = true;
+                    }
+                }
+            } catch (error) {
+                alert('Error al cargar sala: ' + error.message);
+            }
+        }
+
+        async function eliminarSala(nombre, edificio) {
+            if (!confirm('¿Está seguro de eliminar esta sala?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/salas/${nombre}/${edificio}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Sala eliminada');
+                    cargarSalas();
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        document.getElementById('formSala').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const nombre_sala = document.getElementById('nombre_sala').value;
+            const edificio = document.getElementById('edificio').value;
+            const capacidad = parseInt(document.getElementById('capacidad').value);
+            const tipo_sala = document.getElementById('tipo_sala').value;
+
+            const body = { nombre_sala, edificio, capacidad, tipo_sala };
+
+            try {
+                let url = `${API_URL}/salas`;
+                let method = 'POST';
+
+                if (modoEdicion) {
+                    const nombreOrig = document.getElementById('nombreOriginal').value;
+                    const edificioOrig = document.getElementById('edificioOriginal').value;
+                    url = `${API_URL}/salas/${nombreOrig}/${edificioOrig}`;
+                    method = 'PUT';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    ocultarFormulario();
+                    cargarSalas();
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        });
+
+        // Cargar al inicio
+        cargarEdificios();
+        cargarSalas();
+    </script>
+    <script src="js/logout.js"></script>
+</body>
+</html>

@@ -3,8 +3,14 @@ const API_URL = 'http://localhost:5000/api';
 
 // Cargar salas cuando se carga la página
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Página cargada, llamando al backend...');
+    console.log('Pagina cargada, llamando al backend...');
     cargarSalas();
+    
+    // Mostrar nombre del usuario logueado
+    const email = localStorage.getItem('usuarioEmail');
+    if (email) {
+        document.getElementById('usuarioActual').textContent = email;
+    }
 });
 
 // Función para cargar salas desde el backend
@@ -13,103 +19,111 @@ async function cargarSalas() {
     
     try {
         // Mostrar mensaje de carga
-        contenedor.innerHTML = '<p>⏳ Cargando salas...</p>';
+        contenedor.innerHTML = '<p class="mensaje-carga">Cargando salas...</p>';
         
-        console.log(`📡 Llamando a: ${API_URL}/salas`);
-        
-        // Llamar al backend
         const response = await fetch(`${API_URL}/salas`);
+        console.log('Respuesta recibida del backend:', response.status);
         
-        console.log(`📥 Respuesta recibida:`, response.status);
+        if (!response.ok) {
+            throw new Error(`Error HTTP: ${response.status}`);
+        }
         
         const data = await response.json();
+        console.log('Datos recibidos del backend:', data);
         
-        console.log(`📊 Datos recibidos:`, data);
-        
-        // Si hay salas, mostrarlas
-        if (data.success && data.data && data.data.length > 0) {
-            console.log(`✅ ${data.data.length} salas encontradas`);
-            mostrarTabla(data.data);
+        if (data.success && data.data && Array.isArray(data.data)) {
+            if (data.data.length === 0) {
+                contenedor.innerHTML = `
+                    <div class="mensaje-vacio">
+                        <h3>No hay salas registradas</h3>
+                        <p>Por el momento no hay salas disponibles en el sistema.</p>
+                    </div>
+                `;
+            } else {
+                mostrarTabla(data.data);
+            }
         } else {
-            console.log('⚠️ No se encontraron salas');
-            contenedor.innerHTML = '<p>No hay salas disponibles en la base de datos.</p>';
+            throw new Error('Formato de respuesta inesperado desde el backend');
         }
         
     } catch (error) {
-        console.error('❌ Error:', error);
+        console.error('Error al llamar al backend:', error);
         contenedor.innerHTML = `
-            <div style="padding: 20px; background: #ffebee; border-left: 4px solid #f44336; margin: 10px 0;">
-                <h3 style="color: #d32f2f; margin-bottom: 10px;">❌ Error al conectar con el backend</h3>
-                <p><strong>Verifica que:</strong></p>
-                <ul style="margin: 10px 0;">
-                    <li>El backend esté corriendo: <code>python app.py</code></li>
-                    <li>Esté en el puerto 5000: <code>http://localhost:5000</code></li>
-                    <li>La base de datos tenga datos</li>
-                </ul>
-                <p style="color: #666; font-size: 0.9em; margin-top: 10px;">
-                    Error técnico: ${error.message}
-                </p>
+            <div class="mensaje-error">
+                <h3>Error al cargar las salas</h3>
+                <p>Ocurrió un problema al conectarse con el servidor.</p>
+                <p style="font-size: 0.9em; opacity: 0.8;">Detalle técnico: ${error.message}</p>
             </div>
         `;
     }
 }
 
-// Función para crear la tabla HTML
+// Renderizado mejorado - SIMPLIFICADO
 function mostrarTabla(salas) {
     const contenedor = document.getElementById('salas-lista');
     
     let html = `
-        <table>
-            <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Edificio</th>
-                    <th>Capacidad</th>
-                    <th>Tipo</th>
-                    <th>Dirección</th>
-                    <th>Departamento</th>
-                </tr>
-            </thead>
-            <tbody>
+        <div style="overflow-x: auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Nombre</th>
+                        <th style="text-align: center;">Capacidad</th>
+                        <th style="text-align: center;">Tipo</th>
+                    </tr>
+                </thead>
+                <tbody>
     `;
     
-    // Agregar cada sala a la tabla
     salas.forEach(sala => {
-        // Traducir el tipo de sala con emojis
-        let tipoTexto = sala.tipo_sala;
-        let tipoColor = '';
-        
-        if (sala.tipo_sala === 'libre') {
-            tipoTexto = '🟢 Uso Libre';
-            tipoColor = 'color: green;';
-        } else if (sala.tipo_sala === 'posgrado') {
-            tipoTexto = '🔵 Posgrado';
-            tipoColor = 'color: blue;';
-        } else if (sala.tipo_sala === 'docente') {
-            tipoTexto = '🟡 Docente';
-            tipoColor = 'color: #ff9800;';
-        }
-        
         html += `
             <tr>
-                <td><strong>${sala.nombre_sala}</strong></td>
-                <td>${sala.edificio}</td>
+                <td style="text-align: left;"><strong>${sala.nombre_sala}</strong></td>
                 <td style="text-align: center;">${sala.capacidad} personas</td>
-                <td style="${tipoColor}">${tipoTexto}</td>
-                <td>${sala.direccion || 'N/A'}</td>
-                <td>${sala.departamento || 'N/A'}</td>
+                <td style="text-align: center;">
+                    <span class="badge-tipo ${getClaseTipoSala(sala.tipo_sala)}">
+                        ${mapearTipoSala(sala.tipo_sala)}
+                    </span>
+                </td>
             </tr>
         `;
     });
     
     html += `
-            </tbody>
-        </table>
-        <p style="margin-top: 15px; color: #666; text-align: center;">
-            ✅ Total de salas disponibles: <strong>${salas.length}</strong>
+                </tbody>
+            </table>
+        </div>
+        <p class="text-center mt-15" style="color: var(--color-cyan); font-weight: 600;">
+            Total de salas disponibles: <strong>${salas.length}</strong>
         </p>
     `;
     
     contenedor.innerHTML = html;
-    console.log('✅ Tabla renderizada exitosamente');
+    console.log('Tabla renderizada exitosamente');
+}
+
+function getClaseTipoSala(tipo) {
+    switch (tipo) {
+        case 'libre':
+            return 'badge-libre';
+        case 'posgrado':
+            return 'badge-posgrado';
+        case 'docente':
+            return 'badge-docente';
+        default:
+            return '';
+    }
+}
+
+function mapearTipoSala(tipo) {
+    switch (tipo) {
+        case 'libre':
+            return 'Uso Libre';
+        case 'posgrado':
+            return 'Posgrado';
+        case 'docente':
+            return 'Docente';
+        default:
+            return tipo;
+    }
 }

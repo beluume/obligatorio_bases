@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Participantes - Sistema UCU</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>🏛️ Sistema de Reserva de Salas</h1>
+        <nav>
+            <ul>
+                <li><a href="index.html">Inicio</a></li>
+                <li><a href="reservas.html">Reservas</a></li>
+                <li><a href="miperfil.html">Mi Perfil</a></li>
+                <li><a href="reportes.html">Reportes</a></li>
+                <li><a href="admin-participantes.html" class="activo">Administración</a></li>
+                <li><a href="#" id="btnCerrarSesion">Cerrar Sesión</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="contenedor">
+            <h2>👥 Gestión de Participantes</h2>
+            <p>Administrar participantes del sistema</p>
+
+            <div style="margin: 20px 0;">
+                <button onclick="mostrarFormulario()" style="background: var(--color-cyan);">➕ Nuevo Participante</button>
+                <button onclick="cargarParticipantes()" style="background: rgba(232, 14, 101, 0.2); border: 1px solid var(--color-magenta);">🔄 Recargar Lista</button>
+            </div>
+
+            <!-- Formulario Crear/Editar -->
+            <div id="formulario" style="display: none; background: rgba(28, 27, 77, 0.6); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--color-cyan);">
+                <h3 id="tituloForm" style="color: var(--color-cyan);">Nuevo Participante</h3>
+                <form id="formParticipante">
+                    <input type="hidden" id="ciOriginal">
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>CI (formato: 1.234.567-8):</label>
+                        <input type="text" id="ci" placeholder="1.234.567-8" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Nombre:</label>
+                        <input type="text" id="nombre" placeholder="Juan" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Apellido:</label>
+                        <input type="text" id="apellido" placeholder="Pérez" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Email:</label>
+                        <input type="email" id="email" placeholder="juan@ucu.edu.uy" required>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" style="flex: 1;">💾 Guardar</button>
+                        <button type="button" onclick="ocultarFormulario()" style="flex: 1; background: rgba(232, 14, 101, 0.2); border: 1px solid var(--color-magenta);">❌ Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Lista de Participantes -->
+            <div id="lista-participantes"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>💻 Desarrollado por Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+    </footer>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        if (localStorage.getItem('usuarioLogueado') !== 'true') {
+            window.location.href = 'login.html';
+        }
+
+        let modoEdicion = false;
+
+        async function cargarParticipantes() {
+            const contenedor = document.getElementById('lista-participantes');
+            contenedor.innerHTML = '<p class="mensaje-carga">⏳ Cargando participantes...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/participantes`);
+                const data = await response.json();
+
+                if (data.success && data.data && data.data.length > 0) {
+                    let html = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>CI</th>
+                                    <th>Nombre</th>
+                                    <th>Apellido</th>
+                                    <th>Email</th>
+                                    <th>Rol</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    data.data.forEach(p => {
+                        html += `
+                            <tr>
+                                <td><strong>${p.ci}</strong></td>
+                                <td>${p.nombre}</td>
+                                <td>${p.apellido}</td>
+                                <td>${p.email}</td>
+                                <td>${p.roles || 'N/A'}</td>
+                                <td>
+                                    <button onclick="editarParticipante('${p.ci}')" style="padding: 5px 10px; font-size: 0.85rem; background: var(--color-cyan); margin-right: 5px;">✏️ Editar</button>
+                                    <button onclick="eliminarParticipante('${p.ci}')" style="padding: 5px 10px; font-size: 0.85rem; background: rgba(232, 14, 101, 0.6);">🗑️ Eliminar</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table>';
+                    contenedor.innerHTML = html;
+                } else {
+                    contenedor.innerHTML = '<p style="text-align: center; padding: 40px;">No hay participantes registrados</p>';
+                }
+            } catch (error) {
+                contenedor.innerHTML = '<div class="mensaje-error"><h3>❌ Error</h3><p>' + error.message + '</p></div>';
+            }
+        }
+
+        function mostrarFormulario() {
+            document.getElementById('formulario').style.display = 'block';
+            document.getElementById('tituloForm').textContent = 'Nuevo Participante';
+            document.getElementById('formParticipante').reset();
+            document.getElementById('ci').readOnly = false;
+            document.getElementById('ciOriginal').value = '';
+            modoEdicion = false;
+        }
+
+        function ocultarFormulario() {
+            document.getElementById('formulario').style.display = 'none';
+            document.getElementById('formParticipante').reset();
+        }
+
+        async function editarParticipante(ci) {
+            try {
+                const response = await fetch(`${API_URL}/participantes/${ci}`);
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    document.getElementById('formulario').style.display = 'block';
+                    document.getElementById('tituloForm').textContent = 'Editar Participante';
+                    document.getElementById('ci').value = data.data.ci;
+                    document.getElementById('nombre').value = data.data.nombre;
+                    document.getElementById('apellido').value = data.data.apellido;
+                    document.getElementById('email').value = data.data.email;
+                    document.getElementById('ciOriginal').value = data.data.ci;
+                    document.getElementById('ci').readOnly = true;
+                    modoEdicion = true;
+                }
+            } catch (error) {
+                alert('Error al cargar participante: ' + error.message);
+            }
+        }
+
+        async function eliminarParticipante(ci) {
+            if (!confirm('¿Está seguro de eliminar este participante?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/participantes/${ci}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Participante eliminado');
+                    cargarParticipantes();
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        document.getElementById('formParticipante').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const ci = document.getElementById('ci').value;
+            const nombre = document.getElementById('nombre').value;
+            const apellido = document.getElementById('apellido').value;
+            const email = document.getElementById('email').value;
+
+            const body = { ci, nombre, apellido, email };
+
+            try {
+                let url = `${API_URL}/participantes`;
+                let method = 'POST';
+
+                if (modoEdicion) {
+                    url = `${API_URL}/participantes/${document.getElementById('ciOriginal').value}`;
+                    method = 'PUT';
+                }
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    ocultarFormulario();
+                    cargarParticipantes();
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        });
+
+        // Cargar al inicio
+        cargarParticipantes();
+    </script>
+    <script src="js/logout.js"></script>
+</body>
+</html>

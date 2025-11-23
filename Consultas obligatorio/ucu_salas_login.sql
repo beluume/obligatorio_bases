@@ -38,7 +38,11 @@ CREATE TABLE `login` (
 
 LOCK TABLES `login` WRITE;
 /*!40000 ALTER TABLE `login` DISABLE KEYS */;
-INSERT INTO `login` VALUES ('ana@ucu.edu.uy','$2b$12$demo','4.111.111-1'),('luis@ucu.edu.uy','$2b$12$demo','5.222.222-2'),('martin@ucu.edu.uy','$2b$12$demo','7.444.444-4'),('sofia@ucu.edu.uy','$2b$12$demo','6.333.333-3');
+INSERT INTO `login` VALUES
+  ('ana.garcia@correo.ucu.edu.uy','$2b$12$demo','4.111.111-1'),
+  ('luis.perez@docentes.ucu.edu.uy','$2b$12$demo','5.222.222-2'),
+  ('martin.silva@correo.ucu.edu.uy','$2b$12$demo','7.444.444-4'),
+  ('sofia.rodriguez@postgrado.ucu.edu.uy','$2b$12$demo','6.333.333-3');
 /*!40000 ALTER TABLE `login` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -52,3 +56,4 @@ UNLOCK TABLES;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
 -- Dump completed on 2025-11-06 18:24:53
+

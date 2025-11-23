@@ -8,29 +8,537 @@
 </head>
 <body>
     <header>
-        <h1>Sistema de Reserva de Salas</h1>
+        <h1>🏛️ Sistema de Reserva de Salas</h1>
         <nav>
             <ul>
                 <li><a href="index.html">Inicio</a></li>
                 <li><a href="reservas.html" class="activo">Reservas</a></li>
+                <li><a href="miperfil.html">Mi Perfil</a></li>
                 <li><a href="reportes.html">Reportes</a></li>
-                <li><a href="login.html">Salir</a></li>
+                <li><a href="#" id="btnCerrarSesion">Cerrar Sesión</a></li>
             </ul>
         </nav>
     </header>
 
     <main>
         <section class="contenedor">
-            <h2>Gestión de Reservas</h2>
-            <p>Listado de reservas del sistema:</p>
-            <div id="reservas-lista">Cargando reservas...</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h2>📅 Hacer una Reserva</h2>
+                    <p>Completa el formulario para realizar tu reserva:</p>
+                </div>
+                <div style="color: var(--color-cyan); font-size: 0.9rem;">
+                    👤 <span id="usuarioActual"></span> | 
+                    <span id="rolActual" style="color: var(--color-magenta);"></span>
+                </div>
+            </div>
+
+            <!-- Formulario de Reserva -->
+            <form id="formReserva" style="max-width: 600px; margin: 0 auto;">
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--color-text); font-weight: 600;">
+                        🏢 Sala
+                    </label>
+                    <select id="sala" required style="width: 100%; padding: 12px; background: rgba(28, 27, 77, 0.5); border: 1px solid rgba(232, 14, 101, 0.3); border-radius: 8px; color: var(--color-text);">
+                        <option value="">Selecciona una sala...</option>
+                    </select>
+                    <p id="avisoRestriccion" style="display: none; margin-top: 8px; padding: 10px; background: rgba(232, 14, 101, 0.2); border-radius: 6px; color: var(--color-magenta); font-size: 0.9rem;">
+                        ⚠️ Esta sala está restringida para <span id="restriccionTipo"></span>
+                    </p>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--color-text); font-weight: 600;">
+                        📅 Fecha (DD/MM/AAAA)
+                    </label>
+                    <input type="text" id="fecha" placeholder="21/11/2025" pattern="\d{2}/\d{2}/\d{4}" required style="width: 100%; padding: 12px; background: rgba(28, 27, 77, 0.5); border: 1px solid rgba(232, 14, 101, 0.3); border-radius: 8px; color: var(--color-text);">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; margin-bottom: 8px; color: var(--color-text); font-weight: 600;">
+                        🕐 Turno
+                    </label>
+                    <select id="turno" required style="width: 100%; padding: 12px; background: rgba(28, 27, 77, 0.5); border: 1px solid rgba(232, 14, 101, 0.3); border-radius: 8px; color: var(--color-text);">
+                        <option value="">Elegir Turno</option>
+                    </select>
+                </div>
+
+                <!-- Mensaje de disponibilidad -->
+                <div id="mensajeDisponibilidad" style="display: none; margin: 15px 0; padding: 12px; border-radius: 8px;"></div>
+
+                <!-- Resumen de Reserva -->
+                <div id="resumen" style="background: rgba(23, 145, 129, 0.1); padding: 20px; border-radius: 12px; border: 1px solid var(--color-cyan); margin-bottom: 20px; display: none;">
+                    <h3 style="color: var(--color-cyan); margin-bottom: 12px; font-size: 1.1rem;">📋 Resumen de tu Reserva</h3>
+                    <p style="margin: 8px 0;"><strong>🏢 Sala:</strong> <span id="resumenSala"></span></p>
+                    <p style="margin: 8px 0;"><strong>📅 Fecha:</strong> <span id="resumenFecha"></span></p>
+                    <p style="margin: 8px 0;"><strong>🕐 Horario:</strong> <span id="resumenTurno"></span></p>
+                </div>
+
+                <div style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <button type="button" id="btnVerificar" onclick="verificarDisponibilidad()" style="background: var(--color-cyan); padding: 12px 30px; flex: 1; min-width: 180px;">
+                        🔍 Verificar Disponibilidad
+                    </button>
+                    <button type="button" id="btnLimpiar" style="background: rgba(232, 14, 101, 0.2); border: 1px solid var(--color-magenta); padding: 12px 30px;">
+                        Limpiar
+                    </button>
+                    <button type="submit" id="btnConfirmar" style="padding: 12px 30px; flex: 1; min-width: 180px;" disabled>
+                        Confirmar Reserva
+                    </button>
+                </div>
+            </form>
+
+            <div id="mensaje" style="margin-top: 30px; padding: 15px; border-radius: 8px; display: none;"></div>
         </section>
     </main>
 
     <footer>
-        <p>Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+        <p>💻 Desarrollado por Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+        <p style="margin-top: 5px; font-size: 0.85rem; opacity: 0.7;">Universidad Católica del Uruguay</p>
     </footer>
 
-    <script src="js/reservas.js"></script>
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        // Variables globales
+        let turnosDisponibles = [];
+        let salasData = [];
+
+        // Verificar autenticación
+        if (localStorage.getItem('usuarioLogueado') !== 'true') {
+            window.location.href = 'login.html';
+        }
+
+        // Obtener datos del usuario
+        const email = localStorage.getItem('usuarioEmail');
+        const ci = localStorage.getItem('usuarioCI');
+        const tipoUsuario = localStorage.getItem('usuarioTipo') || 'grado';
+        const rolUsuario = localStorage.getItem('usuarioRol') || 'alumno';
+
+        if (email) {
+            document.getElementById('usuarioActual').textContent = email;
+        }
+
+        const rolTexto = tipoUsuario === 'docente' ? '👨‍🏫 Docente' : 
+                         tipoUsuario === 'posgrado' ? '🎓 Posgrado' : '📚 Estudiante';
+        document.getElementById('rolActual').textContent = rolTexto;
+
+        // Cargar turnos desde el backend
+        async function cargarTurnos() {
+            try {
+                console.log('🔄 Cargando turnos desde:', `${API_URL}/turnos`);
+                const response = await fetch(`${API_URL}/turnos`);
+                const data = await response.json();
+                
+                console.log('📊 Respuesta de turnos:', data);
+                
+                if (data.success && data.data) {
+                    turnosDisponibles = data.data;
+                    const selectTurno = document.getElementById('turno');
+                    
+                    // Limpiar opciones existentes excepto la primera
+                    while (selectTurno.options.length > 1) {
+                        selectTurno.remove(1);
+                    }
+                    
+                    data.data.forEach(turno => {
+                        const option = document.createElement('option');
+                        option.value = turno.id_turno;
+                        option.dataset.horario = `${turno.hora_inicio}-${turno.hora_fin}`;
+                        option.textContent = `${turno.hora_inicio} - ${turno.hora_fin}`;
+                        selectTurno.appendChild(option);
+                    });
+                    
+                    console.log('✅ Turnos cargados:', data.data.length);
+                }
+            } catch (error) {
+                console.error('❌ Error cargando turnos:', error);
+            }
+        }
+
+        // Cargar salas desde el backend
+        async function cargarSalas() {
+            try {
+                console.log('🔄 Cargando salas desde:', `${API_URL}/salas`);
+                const response = await fetch(`${API_URL}/salas`);
+                const data = await response.json();
+                
+                console.log('📊 Respuesta de salas:', data);
+                
+                const selectSala = document.getElementById('sala');
+                
+                if (data.success && data.data && data.data.length > 0) {
+                    salasData = data.data;
+                    
+                    data.data.forEach(sala => {
+                        const option = document.createElement('option');
+                        option.value = JSON.stringify({
+                            nombre_sala: sala.nombre_sala,
+                            edificio: sala.edificio
+                        });
+                        option.dataset.nombre = sala.nombre_sala;
+                        option.dataset.tipo = sala.tipo_sala;
+                        option.dataset.edificio = sala.edificio;
+                        
+                        let textoSala = `${sala.nombre_sala} (${sala.edificio}) - Cap: ${sala.capacidad}`;
+                        
+                        if (sala.tipo_sala === 'docente') {
+                            textoSala += ' 🔒 DOCENTE';
+                        } else if (sala.tipo_sala === 'posgrado') {
+                            textoSala += ' 🔒 POSGRADO';
+                        }
+                        
+                        option.textContent = textoSala;
+                        selectSala.appendChild(option);
+                    });
+                    
+                    console.log('✅ Salas cargadas:', data.data.length);
+                }
+            } catch (error) {
+                console.error('❌ Error cargando salas:', error);
+            }
+        }
+
+        // Convertir fecha DD/MM/AAAA a YYYY-MM-DD
+        function convertirFechaParaAPI(fechaStr) {
+            const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+            const match = fechaStr.match(regex);
+            if (!match) return null;
+            
+            const dia = match[1];
+            const mes = match[2];
+            const anio = match[3];
+            
+            return `${anio}-${mes}-${dia}`;
+        }
+
+        // Validar fecha DD/MM/AAAA
+        function validarFecha(fechaStr) {
+            const regex = /^(\d{2})\/(\d{2})\/(\d{4})$/;
+            const match = fechaStr.match(regex);
+            if (!match) return null;
+            
+            const dia = parseInt(match[1]);
+            const mes = parseInt(match[2]);
+            const anio = parseInt(match[3]);
+            
+            if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+            
+            const fecha = new Date(anio, mes - 1, dia);
+            if (fecha.getFullYear() !== anio || fecha.getMonth() !== mes - 1 || fecha.getDate() !== dia) {
+                return null;
+            }
+            
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            if (fecha < hoy) return null;
+            
+            return fecha;
+        }
+
+        // Verificar disponibilidad
+        async function verificarDisponibilidad() {
+            const salaSelect = document.getElementById('sala');
+            const fechaInput = document.getElementById('fecha');
+            const turnoSelect = document.getElementById('turno');
+            const mensajeDiv = document.getElementById('mensajeDisponibilidad');
+            const btnConfirmar = document.getElementById('btnConfirmar');
+            
+            // Validar que todos los campos estén completos
+            if (!salaSelect.value || !fechaInput.value || !turnoSelect.value) {
+                mensajeDiv.style.display = 'block';
+                mensajeDiv.style.background = 'rgba(232, 14, 101, 0.2)';
+                mensajeDiv.style.borderLeft = '3px solid var(--color-magenta)';
+                mensajeDiv.style.color = 'var(--color-magenta)';
+                mensajeDiv.textContent = '⚠️ Por favor completa todos los campos antes de verificar';
+                btnConfirmar.disabled = true;
+                return;
+            }
+            
+            // Validar formato de fecha
+            const fecha = validarFecha(fechaInput.value);
+            if (!fecha) {
+                mensajeDiv.style.display = 'block';
+                mensajeDiv.style.background = 'rgba(232, 14, 101, 0.2)';
+                mensajeDiv.style.borderLeft = '3px solid var(--color-magenta)';
+                mensajeDiv.style.color = 'var(--color-magenta)';
+                mensajeDiv.textContent = '⚠️ Fecha inválida. Usa formato DD/MM/AAAA';
+                btnConfirmar.disabled = true;
+                return;
+            }
+            
+            // Validar restricciones de rol
+            const selectedOption = salaSelect.options[salaSelect.selectedIndex];
+            const tipoSala = selectedOption.dataset.tipo;
+            
+            if ((tipoSala === 'docente' && rolUsuario !== 'docente') || 
+                (tipoSala === 'posgrado' && tipoUsuario !== 'posgrado' && rolUsuario !== 'docente')) {
+                mensajeDiv.style.display = 'block';
+                mensajeDiv.style.background = 'rgba(232, 14, 101, 0.2)';
+                mensajeDiv.style.borderLeft = '3px solid var(--color-magenta)';
+                mensajeDiv.style.color = 'var(--color-magenta)';
+                mensajeDiv.innerHTML = `🔒 <strong>Acceso restringido.</strong> Esta sala es solo para ${tipoSala === 'docente' ? 'docentes' : 'posgrado'}.`;
+                btnConfirmar.disabled = true;
+                return;
+            }
+            
+            // Parsear datos de la sala
+            const salaData = JSON.parse(salaSelect.value);
+            const fechaAPI = convertirFechaParaAPI(fechaInput.value);
+            
+            // Mostrar mensaje de carga
+            mensajeDiv.style.display = 'block';
+            mensajeDiv.style.background = 'rgba(23, 145, 129, 0.2)';
+            mensajeDiv.style.borderLeft = '3px solid var(--color-cyan)';
+            mensajeDiv.style.color = 'var(--color-cyan)';
+            mensajeDiv.textContent = '⏳ Verificando disponibilidad...';
+            btnConfirmar.disabled = true;
+            
+            try {
+                const response = await fetch(`${API_URL}/salas/verificar-disponibilidad`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nombre_sala: salaData.nombre_sala,
+                        edificio: salaData.edificio,
+                        fecha: fechaAPI,
+                        id_turno: parseInt(turnoSelect.value)
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.disponible) {
+                    // ✅ DISPONIBLE
+                    mensajeDiv.style.background = 'rgba(23, 145, 129, 0.2)';
+                    mensajeDiv.style.borderLeft = '3px solid var(--color-cyan)';
+                    mensajeDiv.style.color = 'var(--color-cyan)';
+                    mensajeDiv.innerHTML = '✅ <strong>¡Sala disponible!</strong> Puedes confirmar la reserva.';
+                    btnConfirmar.disabled = false;
+                } else {
+                    // ❌ NO DISPONIBLE
+                    mensajeDiv.style.background = 'rgba(232, 14, 101, 0.2)';
+                    mensajeDiv.style.borderLeft = '3px solid var(--color-magenta)';
+                    mensajeDiv.style.color = 'var(--color-magenta)';
+                    mensajeDiv.innerHTML = `❌ <strong>Sala ocupada.</strong> ${data.message || 'Esta sala ya está reservada para ese horario.'}<br><small>Por favor elige otra sala u otro horario.</small>`;
+                    btnConfirmar.disabled = true;
+                }
+                
+            } catch (error) {
+                console.error('❌ Error al verificar disponibilidad:', error);
+                mensajeDiv.style.background = 'rgba(232, 14, 101, 0.2)';
+                mensajeDiv.style.borderLeft = '3px solid var(--color-magenta)';
+                mensajeDiv.style.color = 'var(--color-magenta)';
+                mensajeDiv.textContent = '❌ Error al verificar disponibilidad. Intenta nuevamente.';
+                btnConfirmar.disabled = true;
+            }
+        }
+
+        // Actualizar resumen
+        function actualizarResumen() {
+            const salaSelect = document.getElementById('sala');
+            const fechaInput = document.getElementById('fecha');
+            const turno = document.getElementById('turno');
+            const resumen = document.getElementById('resumen');
+
+            if (salaSelect.value && fechaInput.value && turno.value) {
+                const nombreSala = salaSelect.options[salaSelect.selectedIndex].dataset.nombre;
+                const fecha = validarFecha(fechaInput.value);
+                
+                if (!fecha) {
+                    fechaInput.style.borderColor = 'var(--color-magenta)';
+                    resumen.style.display = 'none';
+                    return;
+                } else {
+                    fechaInput.style.borderColor = 'rgba(232, 14, 101, 0.3)';
+                }
+                
+                const horarioTexto = turno.options[turno.selectedIndex].dataset.horario;
+                
+                document.getElementById('resumenSala').textContent = nombreSala;
+                document.getElementById('resumenFecha').textContent = fecha.toLocaleDateString('es-ES', { 
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+                });
+                document.getElementById('resumenTurno').textContent = horarioTexto;
+                resumen.style.display = 'block';
+                
+                // Resetear validación cuando cambian los datos
+                document.getElementById('btnConfirmar').disabled = true;
+                document.getElementById('mensajeDisponibilidad').style.display = 'none';
+            } else {
+                resumen.style.display = 'none';
+            }
+        }
+
+        // Event listeners
+        document.getElementById('sala').addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const tipoSala = selectedOption.dataset.tipo;
+            const avisoRestriccion = document.getElementById('avisoRestriccion');
+            const restriccionTipo = document.getElementById('restriccionTipo');
+            
+            if ((tipoSala === 'docente' && rolUsuario !== 'docente') || 
+                (tipoSala === 'posgrado' && tipoUsuario !== 'posgrado' && rolUsuario !== 'docente')) {
+                avisoRestriccion.style.display = 'block';
+                restriccionTipo.textContent = tipoSala === 'docente' ? 'personal docente' : 'estudiantes de posgrado';
+                this.style.borderColor = 'var(--color-magenta)';
+            } else {
+                avisoRestriccion.style.display = 'none';
+                this.style.borderColor = 'rgba(232, 14, 101, 0.3)';
+            }
+            
+            actualizarResumen();
+        });
+
+        document.getElementById('fecha').addEventListener('input', function(e) {
+            let valor = e.target.value.replace(/[^\d]/g, '');
+            if (valor.length >= 2) valor = valor.slice(0, 2) + '/' + valor.slice(2);
+            if (valor.length >= 5) valor = valor.slice(0, 5) + '/' + valor.slice(5, 9);
+            e.target.value = valor;
+            actualizarResumen();
+        });
+
+        document.getElementById('turno').addEventListener('change', actualizarResumen);
+
+        document.getElementById('btnLimpiar').addEventListener('click', function() {
+            document.getElementById('formReserva').reset();
+            document.getElementById('resumen').style.display = 'none';
+            document.getElementById('mensaje').style.display = 'none';
+            document.getElementById('mensajeDisponibilidad').style.display = 'none';
+            document.getElementById('avisoRestriccion').style.display = 'none';
+            document.getElementById('btnConfirmar').disabled = true;
+        });
+
+        // Enviar reserva con validación en backend
+        document.getElementById('formReserva').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const mensaje = document.getElementById('mensaje');
+            const fechaInput = document.getElementById('fecha');
+            const salaSelect = document.getElementById('sala');
+            const turnoSelect = document.getElementById('turno');
+            const btnConfirmar = document.getElementById('btnConfirmar');
+            
+            const selectedOption = salaSelect.options[salaSelect.selectedIndex];
+            const tipoSala = selectedOption.dataset.tipo;
+            
+            // Validar fecha
+            const fecha = validarFecha(fechaInput.value);
+            if (!fecha) {
+                mensaje.style.display = 'block';
+                mensaje.style.background = 'rgba(232, 14, 101, 0.2)';
+                mensaje.style.border = '1px solid var(--color-magenta)';
+                mensaje.style.color = 'var(--color-magenta)';
+                mensaje.innerHTML = '<h3>❌ Fecha Inválida</h3><p>Formato: DD/MM/AAAA</p>';
+                return;
+            }
+            
+            // Validar restricciones de rol
+            if ((tipoSala === 'docente' && rolUsuario !== 'docente') || 
+                (tipoSala === 'posgrado' && tipoUsuario !== 'posgrado' && rolUsuario !== 'docente')) {
+                mensaje.style.display = 'block';
+                mensaje.style.background = 'rgba(232, 14, 101, 0.2)';
+                mensaje.style.border = '1px solid var(--color-magenta)';
+                mensaje.style.color = 'var(--color-magenta)';
+                mensaje.innerHTML = `<h3>🔒 Acceso Restringido</h3><p>Esta sala es solo para ${tipoSala === 'docente' ? 'docentes' : 'posgrado'}.</p>`;
+                return;
+            }
+            
+            // Deshabilitar botón
+            btnConfirmar.disabled = true;
+            btnConfirmar.textContent = '⏳ Creando reserva...';
+            
+            // Parsear datos
+            const salaData = JSON.parse(salaSelect.value);
+            const fechaAPI = convertirFechaParaAPI(fechaInput.value);
+            
+            try {
+                // LLAMAR AL BACKEND PARA CREAR LA RESERVA
+                const response = await fetch(`${API_URL}/reservas`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        nombre_sala: salaData.nombre_sala,
+                        edificio: salaData.edificio,
+                        fecha: fechaAPI,
+                        id_turno: parseInt(turnoSelect.value),
+                        ci_participante: ci,
+                        email: email
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.status === 409) {
+                    // Conflicto: sala ya reservada
+                    mensaje.style.display = 'block';
+                    mensaje.style.background = 'rgba(232, 14, 101, 0.2)';
+                    mensaje.style.border = '1px solid var(--color-magenta)';
+                    mensaje.style.color = 'var(--color-magenta)';
+                    mensaje.innerHTML = `<h3>❌ Sala Ocupada</h3><p>${data.error}</p><small>Otra persona reservó esta sala mientras verificabas. Intenta con otra sala.</small>`;
+                    btnConfirmar.disabled = false;
+                    btnConfirmar.textContent = 'Confirmar Reserva';
+                    return;
+                }
+                
+                if (data.success) {
+                    // ✅ ÉXITO - También guardar en localStorage
+                    let reservas = JSON.parse(localStorage.getItem('misReservas') || '[]');
+                    const horarioTexto = turnoSelect.options[turnoSelect.selectedIndex].dataset.horario;
+                    const nuevaReserva = {
+                        id: data.id_reserva,
+                        sala: selectedOption.dataset.nombre,
+                        fecha: fechaInput.value,
+                        turno: horarioTexto,
+                        estado: 'activa',
+                        usuario: email,
+                        fechaCreacion: new Date().toISOString()
+                    };
+                    reservas.push(nuevaReserva);
+                    localStorage.setItem('misReservas', JSON.stringify(reservas));
+
+                    mensaje.style.display = 'block';
+                    mensaje.style.background = 'rgba(23, 145, 129, 0.2)';
+                    mensaje.style.border = '1px solid var(--color-cyan)';
+                    mensaje.style.color = 'var(--color-cyan)';
+                    mensaje.innerHTML = `
+                        <h3>✅ Reserva Confirmada</h3>
+                        <p>Tu reserva ha sido registrada exitosamente.</p>
+                        <p><strong>ID de reserva:</strong> ${data.id_reserva}</p>
+                        <p style="margin-top: 10px;"><a href="miperfil.html" style="color: var(--color-cyan); text-decoration: underline;">Ver mis reservas</a></p>
+                    `;
+
+                    setTimeout(() => {
+                        document.getElementById('formReserva').reset();
+                        document.getElementById('resumen').style.display = 'none';
+                        document.getElementById('avisoRestriccion').style.display = 'none';
+                        document.getElementById('mensajeDisponibilidad').style.display = 'none';
+                    }, 2000);
+                } else {
+                    throw new Error(data.error || 'Error desconocido');
+                }
+                
+            } catch (error) {
+                console.error('❌ Error al crear reserva:', error);
+                mensaje.style.display = 'block';
+                mensaje.style.background = 'rgba(232, 14, 101, 0.2)';
+                mensaje.style.border = '1px solid var(--color-magenta)';
+                mensaje.style.color = 'var(--color-magenta)';
+                mensaje.innerHTML = `<h3>❌ Error</h3><p>${error.message}</p>`;
+            } finally {
+                btnConfirmar.disabled = false;
+                btnConfirmar.textContent = 'Confirmar Reserva';
+            }
+        });
+
+        // Inicializar - IMPORTANTE: Cargar turnos primero
+        console.log('🚀 Inicializando formulario de reservas...');
+        cargarTurnos();
+        cargarSalas();
+    </script>
+    <script src="js/logout.js"></script>
 </body>
 </html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Sanciones - Sistema UCU</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <header>
+        <h1>🏛️ Sistema de Reserva de Salas</h1>
+        <nav>
+            <ul>
+                <li><a href="index.html">Inicio</a></li>
+                <li><a href="reservas.html">Reservas</a></li>
+                <li><a href="miperfil.html">Mi Perfil</a></li>
+                <li><a href="reportes.html">Reportes</a></li>
+                <li><a href="admin-sanciones.html" class="activo">Administración</a></li>
+                <li><a href="#" id="btnCerrarSesion">Cerrar Sesión</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <section class="contenedor">
+            <h2>⚠️ Gestión de Sanciones</h2>
+            <p>Administrar sanciones a participantes</p>
+
+            <div style="margin: 20px 0;">
+                <button onclick="mostrarFormulario()" style="background: var(--color-cyan);">➕ Nueva Sanción</button>
+                <button onclick="cargarSanciones()" style="background: rgba(232, 14, 101, 0.2); border: 1px solid var(--color-magenta);">🔄 Recargar Lista</button>
+            </div>
+
+            <!-- Formulario Crear -->
+            <div id="formulario" style="display: none; background: rgba(28, 27, 77, 0.6); padding: 20px; border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--color-magenta);">
+                <h3 style="color: var(--color-magenta);">Nueva Sanción</h3>
+                <form id="formSancion">
+                    <div style="margin-bottom: 15px;">
+                        <label>Participante:</label>
+                        <select id="ci_participante" required>
+                            <option value="">Seleccione participante...</option>
+                        </select>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Fecha Inicio:</label>
+                        <input type="date" id="fecha_inicio" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Fecha Fin:</label>
+                        <input type="date" id="fecha_fin" required>
+                    </div>
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label>Motivo:</label>
+                        <textarea id="motivo" placeholder="Motivo de la sanción" rows="3" style="width: 100%; padding: 10px;"></textarea>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" style="flex: 1;">💾 Guardar</button>
+                        <button type="button" onclick="ocultarFormulario()" style="flex: 1; background: rgba(232, 14, 101, 0.2); border: 1px solid var(--color-magenta);">❌ Cancelar</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Lista de Sanciones -->
+            <div id="lista-sanciones"></div>
+        </section>
+    </main>
+
+    <footer>
+        <p>💻 Desarrollado por Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+    </footer>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        if (localStorage.getItem('usuarioLogueado') !== 'true') {
+            window.location.href = 'login.html';
+        }
+
+        async function cargarParticipantes() {
+            try {
+                const response = await fetch(`${API_URL}/participantes`);
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    const select = document.getElementById('ci_participante');
+                    data.data.forEach(p => {
+                        const option = document.createElement('option');
+                        option.value = p.ci;
+                        option.textContent = `${p.nombre} ${p.apellido} (${p.ci})`;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Error cargando participantes:', error);
+            }
+        }
+
+        async function cargarSanciones() {
+            const contenedor = document.getElementById('lista-sanciones');
+            contenedor.innerHTML = '<p class="mensaje-carga">⏳ Cargando sanciones...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/sanciones`);
+                const data = await response.json();
+
+                if (data.success && data.data && data.data.length > 0) {
+                    let html = `
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Participante</th>
+                                    <th>Email</th>
+                                    <th>Fecha Inicio</th>
+                                    <th>Fecha Fin</th>
+                                    <th>Motivo</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+
+                    data.data.forEach(s => {
+                        const estadoBadge = s.estado === 'Activa' 
+                            ? '<span class="badge" style="background: rgba(232, 14, 101, 0.2); color: var(--color-magenta); border: 1px solid var(--color-magenta);">⚠ ACTIVA</span>'
+                            : '<span class="badge badge-finalizada">✓ FINALIZADA</span>';
+
+                        html += `
+                            <tr>
+                                <td style="text-align: center;"><strong>${s.id_sancion}</strong></td>
+                                <td><strong>${s.nombre} ${s.apellido}</strong></td>
+                                <td>${s.email}</td>
+                                <td>${s.fecha_inicio}</td>
+                                <td>${s.fecha_fin}</td>
+                                <td>${s.motivo}</td>
+                                <td>${estadoBadge}</td>
+                                <td>
+                                    <button onclick="eliminarSancion(${s.id_sancion})" style="padding: 5px 10px; font-size: 0.85rem; background: rgba(232, 14, 101, 0.6);">🗑️ Eliminar</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+
+                    html += '</tbody></table>';
+                    contenedor.innerHTML = html;
+                } else {
+                    contenedor.innerHTML = '<p style="text-align: center; padding: 40px;">No hay sanciones registradas</p>';
+                }
+            } catch (error) {
+                contenedor.innerHTML = '<div class="mensaje-error"><h3>❌ Error</h3><p>' + error.message + '</p></div>';
+            }
+        }
+
+        function mostrarFormulario() {
+            document.getElementById('formulario').style.display = 'block';
+            document.getElementById('formSancion').reset();
+            
+            // Establecer fecha inicio como hoy
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('fecha_inicio').value = hoy;
+            
+            // Establecer fecha fin como 2 meses después
+            const fechaFin = new Date();
+            fechaFin.setMonth(fechaFin.getMonth() + 2);
+            document.getElementById('fecha_fin').value = fechaFin.toISOString().split('T')[0];
+        }
+
+        function ocultarFormulario() {
+            document.getElementById('formulario').style.display = 'none';
+            document.getElementById('formSancion').reset();
+        }
+
+        async function eliminarSancion(id) {
+            if (!confirm('¿Está seguro de eliminar esta sanción?')) return;
+
+            try {
+                const response = await fetch(`${API_URL}/sanciones/${id}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ Sanción eliminada');
+                    cargarSanciones();
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        document.getElementById('formSancion').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const ci_participante = document.getElementById('ci_participante').value;
+            const fecha_inicio = document.getElementById('fecha_inicio').value;
+            const fecha_fin = document.getElementById('fecha_fin').value;
+            const motivo = document.getElementById('motivo').value || 'Sanción manual';
+
+            const body = { ci_participante, fecha_inicio, fecha_fin, motivo };
+
+            try {
+                const response = await fetch(`${API_URL}/sanciones`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    ocultarFormulario();
+                    cargarSanciones();
+                } else {
+                    alert('❌ Error: ' + data.error);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        });
+
+        // Cargar al inicio
+        cargarParticipantes();
+        cargarSanciones();
+    </script>
+    <script src="js/logout.js"></script>
+</body>
+</html>

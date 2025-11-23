@@ -8,29 +8,388 @@
 </head>
 <body>
     <header>
-        <h1>Sistema de Reserva de Salas</h1>
+        <h1>🏛️ Sistema de Reserva de Salas</h1>
         <nav>
             <ul>
                 <li><a href="index.html">Inicio</a></li>
                 <li><a href="reservas.html">Reservas</a></li>
+                <li><a href="miperfil.html">Mi Perfil</a></li>
                 <li><a href="reportes.html" class="activo">Reportes</a></li>
-                <li><a href="login.html">Salir</a></li>
+                <li><a href="#" id="btnCerrarSesion">Cerrar Sesión</a></li>
             </ul>
         </nav>
     </header>
 
     <main>
         <section class="contenedor">
-            <h2>Reportes y Estadísticas</h2>
-            <p>Próximamente: Reportes del sistema</p>
-            <div id="reportes-lista">
-                <p>🚧 En desarrollo para la entrega final</p>
+            <h2>📊 Reportes y Estadísticas</h2>
+            <p>Análisis y métricas del sistema de reservas</p>
+            
+            <div style="margin: 20px 0;">
+                <select id="selectorReporte" style="padding: 10px; width: 100%; max-width: 500px;">
+                    <option value="">Selecciona un reporte...</option>
+                    <option value="salas-mas-reservadas">1. Salas más reservadas</option>
+                    <option value="turnos-demandados">2. Turnos más demandados</option>
+                    <option value="promedio-participantes">3. Promedio de participantes por sala</option>
+                    <option value="reservas-por-carrera">4. Reservas por carrera y facultad</option>
+                    <option value="ocupacion-edificios">5. Porcentaje de ocupación por edificio</option>
+                    <option value="asistencias-por-rol">6. Asistencias por rol</option>
+                    <option value="sanciones-por-rol">7. Sanciones por rol</option>
+                    <option value="reservas-por-estado">8. Reservas por estado</option>
+                    <option value="edificio-por-facultad">9. Edificio más usado por facultad</option>
+                    <option value="usuarios-mas-activos">10. Usuarios más activos</option>
+                    <option value="salas-cancelacion">11. Tasa de cancelación por sala</option>
+                </select>
             </div>
+
+            <div id="resultado-reporte"></div>
         </section>
     </main>
 
     <footer>
-        <p>Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+        <p>💻 Desarrollado por Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+        <p style="margin-top: 5px; font-size: 0.85rem; opacity: 0.7;">Universidad Católica del Uruguay</p>
     </footer>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api';
+
+        if (localStorage.getItem('usuarioLogueado') !== 'true') {
+            window.location.href = 'login.html';
+        }
+
+        document.getElementById('selectorReporte').addEventListener('change', async function() {
+            const reporte = this.value;
+            if (!reporte) return;
+
+            const contenedor = document.getElementById('resultado-reporte');
+            contenedor.innerHTML = '<p class="mensaje-carga">⏳ Cargando reporte...</p>';
+
+            try {
+                const response = await fetch(`${API_URL}/reportes/${reporte}`);
+                const data = await response.json();
+
+                if (data.success && data.data && data.data.length > 0) {
+                    mostrarReporte(reporte, data.data);
+                } else {
+                    contenedor.innerHTML = '<p style="text-align: center; padding: 40px; color: var(--color-text-secondary);">No hay datos disponibles para este reporte</p>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                contenedor.innerHTML = '<div class="mensaje-error"><h3>❌ Error al cargar reporte</h3><p>' + error.message + '</p></div>';
+            }
+        });
+
+        function mostrarReporte(tipo, data) {
+            const contenedor = document.getElementById('resultado-reporte');
+            let html = '';
+
+            switch(tipo) {
+                case 'salas-mas-reservadas':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">🏆 Salas Más Reservadas</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Posición</th>
+                                    <th>Sala</th>
+                                    <th>Edificio</th>
+                                    <th>Total Reservas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map((item, idx) => `
+                                    <tr>
+                                        <td style="text-align: center;"><strong>${idx + 1}</strong></td>
+                                        <td><strong>${item.nombre_sala}</strong></td>
+                                        <td>${item.edificio}</td>
+                                        <td style="text-align: center;"><strong>${item.total_reservas}</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'turnos-demandados':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">⏰ Turnos Más Demandados</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Horario</th>
+                                    <th>Total Reservas</th>
+                                    <th>% del Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(item => {
+                                    const total = data.reduce((sum, i) => sum + i.total_reservas, 0);
+                                    const porcentaje = ((item.total_reservas / total) * 100).toFixed(1);
+                                    return `
+                                        <tr>
+                                            <td><strong>${item.hora_inicio} - ${item.hora_fin}</strong></td>
+                                            <td style="text-align: center;">${item.total_reservas}</td>
+                                            <td style="text-align: center;">${porcentaje}%</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'promedio-participantes':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">👥 Promedio de Participantes por Sala</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Sala</th>
+                                    <th>Edificio</th>
+                                    <th>Capacidad</th>
+                                    <th>Promedio Participantes</th>
+                                    <th>% Ocupación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(item => {
+                                    const promedio = parseFloat(item.promedio_participantes).toFixed(1);
+                                    const ocupacion = ((promedio / item.capacidad) * 100).toFixed(0);
+                                    return `
+                                        <tr>
+                                            <td><strong>${item.nombre_sala}</strong></td>
+                                            <td>${item.edificio}</td>
+                                            <td style="text-align: center;">${item.capacidad}</td>
+                                            <td style="text-align: center;">${promedio}</td>
+                                            <td style="text-align: center;">${ocupacion}%</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'reservas-por-carrera':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">🎓 Reservas por Carrera y Facultad</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Facultad</th>
+                                    <th>Carrera</th>
+                                    <th>Total Reservas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(item => `
+                                    <tr>
+                                        <td><strong>${item.facultad}</strong></td>
+                                        <td>${item.carrera}</td>
+                                        <td style="text-align: center;"><strong>${item.total_reservas}</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'ocupacion-edificios':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">🏢 Ocupación de Edificios</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Edificio</th>
+                                    <th>Total Salas</th>
+                                    <th>Total Reservas</th>
+                                    <th>% Ocupación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(item => `
+                                    <tr>
+                                        <td><strong>${item.nombre_edificio}</strong></td>
+                                        <td style="text-align: center;">${item.total_salas}</td>
+                                        <td style="text-align: center;">${item.total_reservas}</td>
+                                        <td style="text-align: center;"><strong>${item.porcentaje}%</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'asistencias-por-rol':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">✅ Asistencias por Rol</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rol</th>
+                                    <th>Total Reservas</th>
+                                    <th>Asistencias</th>
+                                    <th>Inasistencias</th>
+                                    <th>% Asistencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(item => {
+                                    const porcentaje = ((item.asistencias / item.total_reservas) * 100).toFixed(1);
+                                    return `
+                                        <tr>
+                                            <td><strong>${item.rol === 'docente' ? '👨‍🏫 Docente' : '📚 Alumno'}</strong></td>
+                                            <td style="text-align: center;">${item.total_reservas}</td>
+                                            <td style="text-align: center; color: var(--color-cyan);"><strong>${item.asistencias}</strong></td>
+                                            <td style="text-align: center; color: var(--color-magenta);">${item.inasistencias}</td>
+                                            <td style="text-align: center;"><strong>${porcentaje}%</strong></td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'sanciones-por-rol':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">⚠️ Sanciones por Rol</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Rol</th>
+                                    <th>Total Sanciones</th>
+                                    <th>Activas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(item => `
+                                    <tr>
+                                        <td><strong>${item.rol === 'docente' ? '👨‍🏫 Docente' : '📚 Alumno'}</strong></td>
+                                        <td style="text-align: center;">${item.total_sanciones}</td>
+                                        <td style="text-align: center; color: var(--color-magenta);"><strong>${item.activas}</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'reservas-por-estado':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">📊 Reservas por Estado</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Estado</th>
+                                    <th>Cantidad</th>
+                                    <th>Porcentaje</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(item => {
+                                    let badge = '';
+                                    if (item.estado === 'activa') badge = '<span class="badge badge-activa">✔ ACTIVA</span>';
+                                    else if (item.estado === 'cancelada') badge = '<span class="badge badge-cancelada">✖ CANCELADA</span>';
+                                    else if (item.estado === 'finalizada') badge = '<span class="badge badge-finalizada">✓ FINALIZADA</span>';
+                                    else badge = '<span class="badge">⚠ ' + item.estado.toUpperCase() + '</span>';
+                                    
+                                    return `
+                                        <tr>
+                                            <td>${badge}</td>
+                                            <td style="text-align: center;"><strong>${item.cantidad}</strong></td>
+                                            <td style="text-align: center;">${item.porcentaje}%</td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'edificio-por-facultad':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">🏛️ Edificio Más Usado por Facultad</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Facultad</th>
+                                    <th>Edificio</th>
+                                    <th>Total Reservas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(item => `
+                                    <tr>
+                                        <td><strong>${item.facultad}</strong></td>
+                                        <td>${item.nombre_edificio}</td>
+                                        <td style="text-align: center;"><strong>${item.total}</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'usuarios-mas-activos':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">👤 Top 10 Usuarios Más Activos</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Posición</th>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Total Reservas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map((item, idx) => `
+                                    <tr>
+                                        <td style="text-align: center;"><strong>${idx + 1}</strong></td>
+                                        <td><strong>${item.nombre} ${item.apellido}</strong></td>
+                                        <td>${item.email}</td>
+                                        <td style="text-align: center;"><strong>${item.total_reservas}</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+
+                case 'salas-cancelacion':
+                    html = `
+                        <h3 style="color: var(--color-cyan); margin: 20px 0;">📉 Tasa de Cancelación por Sala</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Sala</th>
+                                    <th>Edificio</th>
+                                    <th>Total Reservas</th>
+                                    <th>Canceladas</th>
+                                    <th>Tasa Cancelación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.map(item => `
+                                    <tr>
+                                        <td><strong>${item.nombre_sala}</strong></td>
+                                        <td>${item.edificio}</td>
+                                        <td style="text-align: center;">${item.total}</td>
+                                        <td style="text-align: center; color: var(--color-magenta);">${item.canceladas}</td>
+                                        <td style="text-align: center;"><strong>${item.tasa}%</strong></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    break;
+            }
+
+            contenedor.innerHTML = html;
+        }
+    </script>
+    <script src="js/logout.js"></script>
 </body>
 </html>

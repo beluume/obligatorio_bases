@@ -1,41 +1,49 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema de Reserva de Salas - UCU</title>
     <link rel="stylesheet" href="css/style.css">
 </head>
-
 <body>
-
     <header>
-        <h1>Sistema de Reserva de Salas</h1>
+        <h1>🏛️ Sistema de Reserva de Salas</h1>
         <nav>
-        <ul>
-            <li><a href="index.html" class="activo">Inicio</a></li>
-            <li><a href="reservas.html">Reservas</a></li>
-            <li><a href="reportes.html">Reportes</a></li>
-            <li><a href="login.html">Salir</a></li>
-        </ul>
+            <ul>
+                <li><a href="index.html" class="activo">Inicio</a></li>
+                <li><a href="reservas.html">Reservas</a></li>
+                <li><a href="miperfil.html">Mi Perfil</a></li>
+                <li><a href="reportes.html">Reportes</a></li>
+                <li><a href="#" id="btnCerrarSesion">Cerrar Sesión</a></li>
+            </ul>
         </nav>
     </header>
 
-
     <main>
         <section class="contenedor">
-        <h2>Listado de Salas Disponibles</h2>
-        <p>A continuación se muestran las salas registradas en el sistema:</p>
-        <div id="salas-lista">Salas</div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 15px;">
+                <div>
+                    <h2>🏢 Listado de Salas Disponibles</h2>
+                    <p>A continuación se muestran las salas registradas en el sistema:</p>
+                </div>
+                <div style="color: var(--color-cyan); font-size: 0.9rem;">
+                    👤 <span id="usuarioActual"></span>
+                </div>
+            </div>
+            
+            <div id="salas-lista" class="loading">
+                <p class="mensaje-carga">⏳ Cargando salas...</p>
+            </div>
         </section>
     </main>
 
-
     <footer>
-        <p>Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+        <p>💻 Desarrollado por Belén Mendes, Manuel Chouhy, Nicolás Pérez</p>
+        <p style="margin-top: 5px; font-size: 0.85rem; opacity: 0.7;">Universidad Católica del Uruguay</p>
     </footer>
 
     <script src="js/main.js"></script>
+    <script src="js/logout.js"></script>
 </body>
 </html>
